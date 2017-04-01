@@ -1,0 +1,87 @@
+# Introduction
+
+## Load and check data
+
+```{r, message = FALSE}
+# Load packages
+library('ggplot2') # visualization
+library('ggthemes') # visualization
+library('scales') # visualization
+library('dplyr') # data manipulation
+library('mice') # imputation
+library('randomForest') # classification algorithm
+```
+
+Load nutrition database
+
+```{r, message=FALSE, warning=FALSE}
+train_df <- read.csv("input/en.openfoodfacts.org.products.tsv", sep='\t', stringsAsFactors = FALSE);
+
+#top of the dataset
+head(train_df)
+#the fields and its contents
+names(train_df)
+str(train_df)
+length(train_df)
+colnames(train_df)
+#let's see what is the search order for our variables
+search()
+
+slim_df <- subset(train_df, select = c(17, 28, 32, 35, 37, 65))
+slim_df2 <- subset(slim_df, slim_df$energy.from.fat_100g > 0)
+count(slim_df2)
+colnames(slim_df)
+```
+Let's trim down the data to the columns and rows we care about. Our goal is to see what fields are most likely to predict fat content and what values in those fields are most likely to correspond to high fat conent. 
+```{r, message=FALSE, warning=FALSE}
+slim_df <- subset(train_df, select = c(17, 28, 32, 35, 37, 65))
+head(slim_df)
+count(slim_df)
+slim_df2 <- subset(slim_df, slim_df$energy.from.fat_100g > 0)
+head(slim_df2)
+count(slim_df2)
+```
+
+Let's create a column out of each category. For this to work, the first step is to clean the category names as best we can.
+
+```{r, message=FALSE, warning=FALSE}
+removed_parens = gsub("\\([^\\)]+\\)","",slim_df2[,4])
+all_categories = paste(removed_parens, collapse=',')
+category_vector <- strsplit(all_categories, split = '[,.:]')
+trimmed_categories <- sapply(category_vector, function(x) gsub("^\\s*", "", x))
+lowercase_categories <- tolower(trimmed_categories)
+cat_not_empties <- unique(lowercase_categories[lowercase_categories != ""])
+no_spaces_categories <- gsub("\\s+", "_", lowercase_categories) 
+not_empty_no_spaces_categories <- unique(no_spaces_categories[no_spaces_categories != ""])
+```
+
+Now let's add the categories as boolean columns
+
+```{r, message=FALSE, warning=FALSE}
+#exp = "transform(slim_df2, Salty = 1)"
+#mydf3 <- eval(parse(text=exp))
+for(category in cat_not_empties){
+  category_no_space <- gsub("\\s+", "", category)
+  category_no_space <- gsub("[[:punct:]]", "", category_no_space)
+  #category_no_space <- gsub("\\s+", "", category)
+  #category_no_space <- gsub("_+", "", category_no_space)
+  #category_no_space <- gsub("\\[", "", category_no_space2)
+  #category_no_space <- gsub("\\]+", "", category_no_space)
+  #category_no_space <- gsub("\\*+", "", category_no_space)
+  #category_no_space <- gsub("[\\_\\]\\*\\[]+", "", category_no_space)
+  exp = paste("slim_df2 <- transform(slim_df2, ", category_no_space, "= grepl(\"", category, "\", ingredients_text))", sep = "")
+  cat(paste(exp, "\n", sep = ""))
+  eval(parse(text=exp))
+}
+
+#grepl("alt", "Salt")
+#transform(slim_df2, Salty3 = grepl("alt", ingredients_text))
+
+#sapply(head(slim_df2)$ingredients_text, function(ingredients){
+#  inner_loop <- sapply(cat_not_empties, function(category) {
+#    message("Cat=",category)
+#    FALSE
+#  })
+#  c(ingredients,inner_loop)
+#})
+```
