@@ -45,7 +45,9 @@ count(slim_df2)
 Let's create a column out of each category. For this to work, the first step is to clean the category names as best we can.
 
 ```{r, message=FALSE, warning=FALSE}
-removed_parens = gsub("\\([^\\)]+\\)","",slim_df2[,4])
+slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\[+","",x))
+slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\*+","",x))
+removed_parens = gsub("\\([^\\)]+\\)*","",slim_df2[,4])
 all_categories = paste(removed_parens, collapse=',')
 category_vector <- strsplit(all_categories, split = '[,.:]')
 trimmed_categories <- sapply(category_vector, function(x) gsub("^\\s*", "", x))
@@ -63,15 +65,18 @@ Now let's add the categories as boolean columns
 for(category in cat_not_empties){
   category_no_space <- gsub("\\s+", "", category)
   category_no_space <- gsub("[[:punct:]]", "", category_no_space)
+  category_no_space <- gsub("\\d+", "", category_no_space)
   #category_no_space <- gsub("\\s+", "", category)
   #category_no_space <- gsub("_+", "", category_no_space)
   #category_no_space <- gsub("\\[", "", category_no_space2)
   #category_no_space <- gsub("\\]+", "", category_no_space)
   #category_no_space <- gsub("\\*+", "", category_no_space)
   #category_no_space <- gsub("[\\_\\]\\*\\[]+", "", category_no_space)
-  exp = paste("slim_df2 <- transform(slim_df2, ", category_no_space, "= grepl(\"", category, "\", ingredients_text))", sep = "")
-  cat(paste(exp, "\n", sep = ""))
-  eval(parse(text=exp))
+  if(category_no_space != ""){
+    exp = paste("slim_df2 <- transform(slim_df2, ", category_no_space, "= grepl(\"", category, "\", ingredients_text))", sep = "")
+    cat(paste(exp, "\n", sep = ""))
+    eval(parse(text=exp))
+  }
 }
 
 #grepl("alt", "Salt")
