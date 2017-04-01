@@ -45,14 +45,14 @@ count(slim_df2)
 Let's create a column out of each category. For this to work, the first step is to clean the category names as best we can.
 
 ```{r, message=FALSE, warning=FALSE}
+slim_df2[,4] <- sapply(slim_df2[,4],function(x) tolower(x))
 slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\[+","",x))
 slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\*+","",x))
 removed_parens = gsub("\\([^\\)]+\\)*","",slim_df2[,4])
 all_categories = paste(removed_parens, collapse=',')
 category_vector <- strsplit(all_categories, split = '[,.:]')
-trimmed_categories <- sapply(category_vector, function(x) gsub("^\\s*", "", x))
-lowercase_categories <- tolower(trimmed_categories)
-cat_not_empties <- unique(lowercase_categories[lowercase_categories != ""])
+trimmed_categories <- sapply(category_vector, function(x) gsub("^\\s+|\\s+$", "", x))
+cat_not_empties <- unique(trimmed_categories[trimmed_categories != ""])
 no_spaces_categories <- gsub("\\s+", "_", lowercase_categories) 
 not_empty_no_spaces_categories <- unique(no_spaces_categories[no_spaces_categories != ""])
 ```
