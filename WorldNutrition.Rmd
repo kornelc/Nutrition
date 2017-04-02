@@ -45,48 +45,32 @@ count(slim_df2)
 Let's create a column out of each category. For this to work, the first step is to clean the category names as best we can.
 
 ```{r, message=FALSE, warning=FALSE}
+#let's remove the case problem by making everything lower case
 slim_df2[,4] <- sapply(slim_df2[,4],function(x) tolower(x))
+
+#remove some ugly charaters in the ingredients columns that will confuse our regexeses and which make now sense anyway
 slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\[+","",x))
 slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\*+","",x))
+```
+The seconds step is to break up the ingredients column which now contains a comma separated list and make column names out of them. Occasionally the list items contain more detail in parenthesis. We will remove these, since the don't make sense in column names. We will need to versions: One sting for each ingredient taht can be used as a column name and one which can be used as a search string. The first one must have no spaces. The second kind must be a proper substring of the ingredients columns because we are going to use it for searching into it in the next step. 
+
+```{r, message=FALSE, warning=FALSE}
 removed_parens = gsub("\\([^\\)]+\\)*","",slim_df2[,4])
 all_categories = paste(removed_parens, collapse=',')
 category_vector <- strsplit(all_categories, split = '[,.:]')
 trimmed_categories <- sapply(category_vector, function(x) gsub("^\\s+|\\s+$", "", x))
 cat_not_empties <- unique(trimmed_categories[trimmed_categories != ""])
-no_spaces_categories <- gsub("\\s+", "_", lowercase_categories) 
-not_empty_no_spaces_categories <- unique(no_spaces_categories[no_spaces_categories != ""])
 ```
 
-Now let's add the categories as boolean columns
+Now let's add the categories as boolean columns. Here we do the additional cleanup needed for column names.
 
 ```{r, message=FALSE, warning=FALSE}
-#exp = "transform(slim_df2, Salty = 1)"
-#mydf3 <- eval(parse(text=exp))
 for(category in cat_not_empties){
-  category_no_space <- gsub("\\s+", "", category)
-  category_no_space <- gsub("[[:punct:]]", "", category_no_space)
-  category_no_space <- gsub("\\d+", "", category_no_space)
-  #category_no_space <- gsub("\\s+", "", category)
-  #category_no_space <- gsub("_+", "", category_no_space)
-  #category_no_space <- gsub("\\[", "", category_no_space2)
-  #category_no_space <- gsub("\\]+", "", category_no_space)
-  #category_no_space <- gsub("\\*+", "", category_no_space)
-  #category_no_space <- gsub("[\\_\\]\\*\\[]+", "", category_no_space)
-  if(category_no_space != ""){
-    exp = paste("slim_df2 <- transform(slim_df2, ", category_no_space, "= grepl(\"", category, "\", ingredients_text))", sep = "")
-    cat(paste(exp, "\n", sep = ""))
+  column_name <- gsub("\\s+|\\d+", "", category)
+  column_name <- gsub("[[:punct:]]", "", column_name)
+  if(column_name != ""){
+    exp = paste("slim_df2 <- transform(slim_df2, ", column_name, "= grepl(\"", category, "\", ingredients_text))", sep = "")
     eval(parse(text=exp))
   }
 }
-
-#grepl("alt", "Salt")
-#transform(slim_df2, Salty3 = grepl("alt", ingredients_text))
-
-#sapply(head(slim_df2)$ingredients_text, function(ingredients){
-#  inner_loop <- sapply(cat_not_empties, function(category) {
-#    message("Cat=",category)
-#    FALSE
-#  })
-#  c(ingredients,inner_loop)
-#})
 ```
