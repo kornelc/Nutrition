@@ -26,15 +26,10 @@ length(train_df)
 colnames(train_df)
 #let's see what is the search order for our variables
 search()
-
-slim_df <- subset(train_df, select = c(17, 28, 32, 35, 37, 65))
-slim_df2 <- subset(slim_df, slim_df$energy.from.fat_100g > 0)
-count(slim_df2)
-colnames(slim_df)
 ```
 Let's trim down the data to the columns and rows we care about. Our goal is to see what fields are most likely to predict fat content and what values in those fields are most likely to correspond to high fat conent. 
 ```{r, message=FALSE, warning=FALSE}
-slim_df <- subset(train_df, select = c(17, 28, 32, 35, 37, 65))
+slim_df <- subset(train_df, select = c(8, 17, 28, 32, 35, 37, 65))
 head(slim_df)
 count(slim_df)
 slim_df2 <- subset(slim_df, slim_df$energy.from.fat_100g > 0)
@@ -46,16 +41,16 @@ Let's create a column out of each category. For this to work, the first step is 
 
 ```{r, message=FALSE, warning=FALSE}
 #let's remove the case problem by making everything lower case
-slim_df2[,4] <- sapply(slim_df2[,4],function(x) tolower(x))
+slim_df2[,5] <- sapply(slim_df2[,5],function(x) tolower(x))
 
 #remove some ugly charaters in the ingredients columns that will confuse our regexeses and which make now sense anyway
-slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\[+","",x))
-slim_df2[,4] <- sapply(slim_df2[,4],function(x) gsub("\\*+","",x))
+slim_df2[,5] <- sapply(slim_df2[,5],function(x) gsub("\\[+","",x))
+slim_df2[,5] <- sapply(slim_df2[,5],function(x) gsub("\\*+","",x))
 ```
 The seconds step is to break up the ingredients column which now contains a comma separated list and make column names out of them. Occasionally the list items contain more detail in parenthesis. We will remove these, since the don't make sense in column names. We will need to versions: One sting for each ingredient taht can be used as a column name and one which can be used as a search string. The first one must have no spaces. The second kind must be a proper substring of the ingredients columns because we are going to use it for searching into it in the next step. 
 
 ```{r, message=FALSE, warning=FALSE}
-removed_parens = gsub("\\([^\\)]+\\)*","",slim_df2[,4])
+removed_parens = gsub("\\([^\\)]+\\)*","",slim_df2[,5])
 all_categories = paste(removed_parens, collapse=',')
 category_vector <- strsplit(all_categories, split = '[,.:]')
 trimmed_categories <- sapply(category_vector, function(x) gsub("^\\s+|\\s+$", "", x))
@@ -73,4 +68,23 @@ for(category in cat_not_empties){
     eval(parse(text=exp))
   }
 }
+```
+Let's look at what numbers of products have what numbers of fat content.
+```{r, message=FALSE, warning=FALSE}
+#slim_df2$fat_factor <- factor(round(slim_df2$energy.from.fat_100g, digits=-2))
+table(slim_df2$energy.from.fat_100g)
+```
+It makes sense to create three categories of fat content:
+```{r, message=FALSE, warning=FALSE}
+slim_df2$fat_cat[slim_df2$energy.from.fat_100g > 0 & slim_df2$energy.from.fat_100g <=1000 ] <- 'LOW_FAT'
+slim_df2$fat_cat[slim_df2$energy.from.fat_100g > 1000 & slim_df2$energy.from.fat_100g <=2000 ] <- 'MID_FAT'
+slim_df2$fat_cat[slim_df2$energy.from.fat_100g > 2000 ] <- 'HIGH_FAT'
+table(slim_df2$fat_cat)
+```
+Let's look at the distrinutoion of products according to these three fat levels in a more visual way:
+```{r, message=FALSE, warning=FALSE}
+ggplot(data.frame(slim_df2$fat_cat), aes(x=slim_df2$fat_cat)) + geom_bar()
+```
+It looks like most foods fall into the low fat category. We are interested in predicting from the ingredients which foods fall into the high fat category:
+```{r, message=FALSE, warning=FALSE}
 ```
