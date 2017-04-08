@@ -1,4 +1,4 @@
-Let's try to figure out if fat content in these food products can be predicted from the presence of other specific common ingredients. For instance, if the labeling doesn't say fat content, but the food tastes salty or sugary sweet, can we predict that the food has higher or lower fat.
+As my first Kaggle project, let's try to figure out if fat content in these food products can be predicted from the presence of other specific common ingredients. For instance, if the labeling doesn't say fat content, but the food tastes salty or sugary sweet, can we predict that the food has higher or lower fat.
 
 ```{r, message = FALSE}
 # Load packages
@@ -45,7 +45,7 @@ slim_df2[,5] <- sapply(slim_df2[,5],function(x) tolower(x))
 slim_df2[,5] <- sapply(slim_df2[,5],function(x) gsub("\\[+","",x))
 slim_df2[,5] <- sapply(slim_df2[,5],function(x) gsub("\\*+","",x))
 ```
-The seconds step is to break up the ingredients column which now contains a comma separated list and make column names out of them. Occasionally the list items contain more detail in parenthesis. We will remove these, since the don't make sense in column names. We will need to versions: One sting for each ingredient taht can be used as a column name and one which can be used as a search string. The first one must have no spaces. The second kind must be a proper substring of the ingredients columns because we are going to use it for searching into it in the next step. 
+The seconds step is to break up the ingredients column which now contains a comma separated list and make column names out of them. Occasionally the list items contain more detail in parenthesis. We will remove these, since they don't make sense in column names. We will need two versions: One string for each ingredient that can be used as a column name and one which can be used as a search string. The first one must have no spaces. The second kind must be a proper substring of the ingredients columns because we are going to use it for searching into it in the next step. 
 
 ```{r, message=FALSE, warning=FALSE}
 removed_parens = gsub("\\([^\\)]+\\)*","",slim_df2[,5])
@@ -72,7 +72,6 @@ for(category in very_common_cat_not_empties){
 ```
 Let's look at what numbers of products have what numbers of fat content.
 ```{r, message=FALSE, warning=FALSE}
-#slim_df2$fat_factor <- factor(round(slim_df2$energy.from.fat_100g, digits=-2))
 table(slim_df2$energy.from.fat_100g)
 ```
 It makes sense to create three categories of fat content:
@@ -87,7 +86,7 @@ slim_df2$fat_cat_n[slim_df2$energy.from.fat_100g > 1000 & slim_df2$energy.from.f
 slim_df2$fat_cat_n[slim_df2$energy.from.fat_100g > 2000 ] <- 3
 
 ```
-Let's look at the distrinutoion of products according to these three fat levels in a more visual way:
+Let's look at the distribution of products according to these three fat levels in a more visual way:
 ```{r, message=FALSE, warning=FALSE}
 ggplot(data.frame(slim_df2$fat_cat), aes(x=slim_df2$fat_cat)) + geom_bar()
 ```
@@ -103,8 +102,9 @@ food_rf_model <- randomForest(dependency_list, data = slim_df2)
 plot(food_food_rf_model)
 legend('topright', colnames(food_rf_model$err.rate), col=1:4, fill=1:4)
 ```
-When we plot this, the overall error rate, the black line falls between 20%-30%. It appears, the lower the fat content the more successfully we can predict it from the other variables. This maybe because the lower the fat content the larger the data set. The red graph is puzzling. Can we not predict high fat content at all from the other ingredients?
+When we plot this, the overall error rate, the black line falls between 20%-30%. It appears, the lower the fat content the more successfully we can predict it from the other variables. This maybe because the lower the fat content the larger the data set. The red graph is puzzling. Can we not predict high fat content at all from the other ingredients for super fatty foods?
 
+Which ingredients are the best predictors of fat content?
 
 ```{r, message=FALSE, warning=FALSE}
 importance    <- importance(food_rf_model)
