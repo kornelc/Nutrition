@@ -1,3 +1,6 @@
+# Can we predict fat content from other ingredients?
+## by Kornel Csaszar
+
 As my first Kaggle project, let's try to figure out if fat content in these food products can be predicted from the presence of other specific common ingredients. For instance, if the labeling doesn't say fat content, but the food tastes salty or sugary sweet, can we predict that the food has higher or lower fat.
 
 ```{r, message = FALSE}
