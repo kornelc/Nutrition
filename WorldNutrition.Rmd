@@ -1,6 +1,4 @@
-# Introduction
-
-## Load and check data
+Let's try to figure out if fat content in these food products can be predicted from the presence of other specific common ingredients. For instance, if the labeling doesn't say fat content, but the food tastes salty or sugary sweet, can we predict that the food has higher or lower fat.
 
 ```{r, message = FALSE}
 # Load packages
@@ -54,18 +52,21 @@ removed_parens = gsub("\\([^\\)]+\\)*","",slim_df2[,5])
 all_categories = paste(removed_parens, collapse=',')
 category_vector <- strsplit(all_categories, split = '[,.:]')
 trimmed_categories <- sapply(category_vector, function(x) gsub("^\\s+|\\s+$", "", x))
-cat_not_empties <- unique(trimmed_categories[trimmed_categories != ""])
+cat_not_empties <- trimmed_categories[trimmed_categories != ""]
+very_common_cat_not_empties = names(sort(table(cat_not_empties), decreasing = T))[0:20]
 ```
 
 Now let's add the categories as boolean columns. Here we do the additional cleanup needed for column names.
 
 ```{r, message=FALSE, warning=FALSE}
-for(category in cat_not_empties){
+col_names <- c()
+for(category in very_common_cat_not_empties){
   column_name <- gsub("\\s+|\\d+", "", category)
   column_name <- gsub("[[:punct:]]", "", column_name)
   if(column_name != ""){
-    exp = paste("slim_df2 <- transform(slim_df2, ", column_name, "= grepl(\"", category, "\", ingredients_text))", sep = "")
+    exp = paste("slim_df2 <- transform(slim_df2, ", column_name, "= as.integer(grepl(\"", category, "\", ingredients_text)))", sep = "")
     eval(parse(text=exp))
+    col_names <- append( col_names, column_name) 
   }
 }
 ```
@@ -80,6 +81,11 @@ slim_df2$fat_cat[slim_df2$energy.from.fat_100g > 0 & slim_df2$energy.from.fat_10
 slim_df2$fat_cat[slim_df2$energy.from.fat_100g > 1000 & slim_df2$energy.from.fat_100g <=2000 ] <- 'MID_FAT'
 slim_df2$fat_cat[slim_df2$energy.from.fat_100g > 2000 ] <- 'HIGH_FAT'
 table(slim_df2$fat_cat)
+
+slim_df2$fat_cat_n[slim_df2$energy.from.fat_100g > 0 & slim_df2$energy.from.fat_100g <=1000 ] <- 1
+slim_df2$fat_cat_n[slim_df2$energy.from.fat_100g > 1000 & slim_df2$energy.from.fat_100g <=2000 ] <- 2
+slim_df2$fat_cat_n[slim_df2$energy.from.fat_100g > 2000 ] <- 3
+
 ```
 Let's look at the distrinutoion of products according to these three fat levels in a more visual way:
 ```{r, message=FALSE, warning=FALSE}
@@ -87,4 +93,44 @@ ggplot(data.frame(slim_df2$fat_cat), aes(x=slim_df2$fat_cat)) + geom_bar()
 ```
 It looks like most foods fall into the low fat category. We are interested in predicting from the ingredients which foods fall into the high fat category:
 ```{r, message=FALSE, warning=FALSE}
+# Set a random seed
+set.seed(999)
+dependency_list <- as.formula(paste( "factor(fat_cat) ~ ", paste(col_names, collapse = "+")))
+# We could have used reformulate above instead of paste
+dependency_list
+food_rf_model <- randomForest(dependency_list, data = slim_df2)
+
+plot(food_food_rf_model)
+legend('topright', colnames(food_rf_model$err.rate), col=1:4, fill=1:4)
 ```
+When we plot this, the overall error rate, the black line falls between 20%-30%. It appears, the lower the fat content the more successfully we can predict it from the other variables. This maybe because the lower the fat content the larger the data set. The red graph is puzzling. Can we not predict high fat content at all from the other ingredients?
+
+
+```{r, message=FALSE, warning=FALSE}
+importance    <- importance(food_rf_model)
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+# Create a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+
+# Use ggplot2 to visualize the relative importance of variables
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+    y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+    hjust=0, vjust=0.55, size = 4, colour = 'red') +
+  labs(x = 'Variables') +
+  coord_flip() + 
+  theme_few()
+```
+This shows us the high importance of water, sugar, and salt. What would be more useful is the likelyhood of any of these co-ocurring with low, medium, or high fat content. Since from above it seems that the error rate is high for anything but the prediction of low fat content, let's see which of these ingredients predicts low fat content.
+
+```{r, message=FALSE, warning=FALSE}
+corelation_matrix <- cor(slim_df2[,c("energy.from.fat_100g", "water", "sugar", "salt")])
+pairs(corelation_matrix)
+```
+It looks like whenever any of these ingredients are present, the fat content is very low. When they are not present the fat content is very high. Since the pattaern is the same for all three of them, it more likely that the ingredients data gives an incorrect representation of what is in the food product. For instance, maybe very fatty foods simply don't list water, sugar, and salt and other less regulated ingredients. This means we cannot draw conslusions for fat content, from the presense of other ingredients, such as water, sugar, and salt, specifically.
+
+So the only thing we can say about the data is that the shorter the ingredient list the more likely it is that the food has higher fat listed. We can also say that this prediction works best for foods with lower fat content and doesn't work for foods with very high fat content, based on the error graph above.
