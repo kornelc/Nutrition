@@ -1,5 +1,4 @@
 # Can we predict fat content from other ingredients?
-## by Kornel Csaszar
 
 As my first Kaggle project, let's try to figure out if fat content in these food products can be predicted from the presence of other specific common ingredients. For instance, if the labeling doesn't say fat content, but the food tastes salty or sugary sweet, can we predict that the food has higher or lower fat.
 
@@ -102,7 +101,7 @@ dependency_list <- as.formula(paste( "factor(fat_cat) ~ ", paste(col_names, coll
 dependency_list
 food_rf_model <- randomForest(dependency_list, data = slim_df2)
 
-plot(food_food_rf_model)
+plot(food_rf_model)
 legend('topright', colnames(food_rf_model$err.rate), col=1:4, fill=1:4)
 ```
 When we plot this, the overall error rate, the black line falls between 20%-30%. It appears, the lower the fat content the more successfully we can predict it from the other variables. This maybe because the lower the fat content the larger the data set. The red graph is puzzling. Can we not predict high fat content at all from the other ingredients for super fatty foods?
@@ -123,10 +122,9 @@ ggplot(rankImportance, aes(x = reorder(Variables, Importance),
     y = Importance, fill = Importance)) +
   geom_bar(stat='identity') + 
   geom_text(aes(x = Variables, y = 0.5, label = Rank),
-    hjust=0, vjust=0.55, size = 4, colour = 'red') +
+    hjust=0, vjust=0.55, size = 4, colour = 'white') +
   labs(x = 'Variables') +
-  coord_flip() + 
-  theme_few()
+  coord_flip()
 ```
 This shows us the high importance of water, sugar, and salt. What would be more useful is the likelyhood of any of these co-ocurring with low, medium, or high fat content. Since from above it seems that the error rate is high for anything but the prediction of low fat content, let's see which of these ingredients predicts low fat content.
 
